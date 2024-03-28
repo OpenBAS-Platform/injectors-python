@@ -68,30 +68,6 @@ jobs:
       - ms-teams/report:
           only_on_fail: true
           webhook_url: $MS_TEAMS_WEBHOOK_URL
-  build_2:
-    working_directory: ~/openbas
-    docker:
-      - image: cimg/base:stable-20.04
-    steps:
-      - checkout
-      - setup_remote_docker
-      - run: sudo apt-get update -qq && sudo apt install curl gettext-base
-      - run:
-          working_directory: ~/openbas/mailer
-          name: Build Docker image openbas/injector-mailer
-          command: docker build -t openbas/injector-mailer:latest . && docker tag openbas/injector-mailer:latest openbas/injector-mailer:${CIRCLE_TAG}
-      - run:
-          name: Publish Docker Image to Docker Hub
-          command: |
-            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-            docker push openbas/injector-mailer:latest
-            docker push openbas/injector-mailer:${CIRCLE_TAG}
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
-      - ms-teams/report:
-          only_on_fail: true
-          webhook_url: $MS_TEAMS_WEBHOOK_URL
   build_rolling_1:
     working_directory: ~/openbas
     docker:
@@ -109,29 +85,6 @@ jobs:
           command: |
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
             docker push openbas/injector-http-query:rolling
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
-      - ms-teams/report:
-          only_on_fail: true
-          webhook_url: $MS_TEAMS_WEBHOOK_URL
-  build_rolling_2:
-    working_directory: ~/openbas
-    docker:
-      - image: cimg/base:stable-20.04
-    steps:
-      - checkout
-      - setup_remote_docker
-      - run: sudo apt-get update -qq && sudo apt install curl gettext-base
-      - run:
-          working_directory: ~/openbas/mailer
-          name: Build Docker image openbas/injector-mailer
-          command: docker build -t openbas/injector-mailer:rolling .
-      - run:
-          name: Publish Docker Image to Docker Hub
-          command: |
-            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-            docker push openbas/injector-mailer:rolling
       - slack/notify:
           event: fail
           template: basic_fail_1
@@ -172,21 +125,7 @@ workflows:
               only: /[0-9]+(\.[0-9]+)+(\.[0-9]+)*/
             branches:
               ignore: /.*/
-      - build_2:
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)+(\.[0-9]+)*/
-            branches:
-              ignore: /.*/
       - build_rolling_1:
-          requires:
-            - ensure_formatting
-            - linter
-          filters:
-            branches:
-              only:
-                - main
-      - build_rolling_2:
           requires:
             - ensure_formatting
             - linter
@@ -197,11 +136,9 @@ workflows:
       - notify_rolling:
           requires:
             - build_rolling_1
-            - build_rolling_2
       - notify:
           requires:
             - build_1
-            - build_2
           filters:
             tags:
               only: /[0-9]+(\.[0-9]+)+(\.[0-9]+)*/
